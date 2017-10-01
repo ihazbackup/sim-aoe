@@ -33,10 +33,11 @@
 #include "utils/ndn-ns3-packet-tag.hpp"
 #include "utils/ndn-rtt-mean-deviation.hpp"
 
-#include <ndn-cxx/lp/tags.hpp>
-
 #include <boost/lexical_cast.hpp>
 #include <boost/ref.hpp>
+
+#include <ndn-cxx/lp/tags.hpp>
+// #include "ns3/ndnSIM/ndn-cxx/lp/atmt.hpp"
 
 NS_LOG_COMPONENT_DEFINE("MyConsumer");
 
@@ -145,14 +146,6 @@ MyConsumer::StartApplication() // Called at time specified by Start
   // do base stuff
   App::StartApplication();
 
-  MobilityHelper mob;
-  mob.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
-   "X", StringValue ("20.0"),
-   "Y", StringValue ("20.0"),
-   "Rho", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"));
-  mob.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-  mob.Install(GetNode());
-
   // Send 1 interest packet
   Simulator::Schedule(Seconds(1.0), &MyConsumer::SendInterest, this);
 }
@@ -204,8 +197,15 @@ MyConsumer::SendInterest()
   shared_ptr<Interest> interest = make_shared<Interest>();
   interest->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
   interest->setName(*nameWithSequence);
+  interest->set_atmt_uuid("12345");
   time::milliseconds interestLifeTime(m_interestLifeTime.GetMilliSeconds());
   interest->setInterestLifetime(interestLifeTime);
+
+  // Create a new ATMT Packet
+  /*
+  lp::ATMTPacket packet;
+  interest->setTag(make_shared<lp::ATMTPacketTag>(packet));
+  */
 
   std::cout << "[ MyConsumer ] sending interest " << *interest << std::endl;
 

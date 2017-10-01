@@ -8,13 +8,14 @@
 #include "ns3/packet.h"
 #include "ns3/simulator.h"
 
-#include "helper.cpp"
-
 #include "ns3/ndnSIM/helper/ndn-stack-helper.hpp"
 #include "model/ndn-l3-protocol.hpp"
 #include "helper/ndn-fib-helper.hpp"
 
 #include <memory>
+
+#include "helper.cpp"
+#include <ndn-cxx/lp/tags.hpp>
 
 NS_LOG_COMPONENT_DEFINE("MyProducer");
 
@@ -73,18 +74,6 @@ MyProducer::StartApplication()
   NS_LOG_FUNCTION_NOARGS();
   App::StartApplication();
 
-  MobilityHelper mob;
-  mob.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
-   "X", StringValue ("35.0"),
-   "Y", StringValue ("35.0"),
-   "Rho", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"));
-  mob.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
-    "Mode", StringValue("Time"),
-    "Time", StringValue("2s"),
-    "Speed", StringValue("ns3::ConstantRandomVariable[Constant=3.0]"),
-    "Bounds", StringValue("0|125|0|125"));
-  mob.Install(GetNode());
-
   FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
 
 
@@ -121,10 +110,26 @@ MyProducer::OnInterest(shared_ptr<const Interest> interest)
   std::cout << "idx-2 (ypos) = " << parts[2] << std::endl;
   std::cout << "idx-3 (radius) = " << parts[3] << std::endl;
 
+  // ATMT Packet
+  std::cout << "ATMT UUID = " << interest->get_atmt_uuid() << std::endl;
+
   // check mobility (BIG THX TO https://groups.google.com/forum/#!topic/ns-3-users/ftQqy23ug_E)
   Ptr<RandomWalk2dMobilityModel> model = GetNode()->GetObject<RandomWalk2dMobilityModel>();
   Vector pos = model->GetPosition();
   std::cout << "current pos upon receiving interest: " << pos << std::endl;
+
+  // Getting extra tag
+  /*
+  auto tag = interest-> template getTag<lp::ATMTPacketTag>();
+  if (tag == nullptr)
+  {
+    std::cout << "[ MyProducer ] No ATMT Packet found" << std::endl;
+  } 
+  else 
+  {
+    std::cout << "[ MyProducer ] ATMT UUID: " <<  tag->get().getData() << std::endl;
+  }
+  */
 
   auto data = make_shared<Data>();
   data->setName(dataName);
