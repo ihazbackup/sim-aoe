@@ -21,8 +21,10 @@ After you put / override every files, run these:
 
 # Preliminary Experiment tasks
 
-[x] Customize Interest and Data packets with ATMT header
-[x] Node mobility and location-awareness
-[x] Broadcast strategy (May use Wifi module with limited range)
-[x] Customize node behavior when receiving interest or data packet
-[ ] Custom forwarding strategy
+- [x] Customize Interest and Data packets with ATMT header
+- [x] Node mobility and location-awareness
+- [x] Broadcast strategy (May use Wifi module with limited range)
+- [x] Customize node behavior when receiving interest or data packet
+- [x] Visualization
+- [ ] Custom forwarding strategy
+- [ ] Metrics extraction
