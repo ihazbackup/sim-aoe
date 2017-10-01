@@ -399,16 +399,17 @@ private:
   mutable Block m_nonce;
   time::milliseconds m_interestLifetime;
 
-  // Added by Jason. The ATMT info
-  std::string m_atmt_uuid;
+  // -------------------------------------- [JASON] The ATMT info
+  std::string   m_atmt_uuid;
+  uint32_t      m_atmt_prevDist;
+  // -------------------------------------- END [JASON] The ATMT info
 
   mutable Block m_link;
   mutable shared_ptr<Link> m_linkCached;
   size_t m_selectedDelegationIndex;
   mutable Block m_wire;
 
-
-// Added by Jason, ATMT getter-setter
+// ----------------------------------------- CUSTOMIZED PUBLIC METHODS BY JASON
 public:
   std::string 
   get_atmt_uuid() const 
@@ -423,7 +424,22 @@ public:
     m_wire.reset();
     return *this;
   }
+
+  double
+  get_atmt_prevDist() const
+  {
+    return m_atmt_prevDist;
+  }
+
+  Interest&
+  set_atmt_prevDist(const uint32_t dist)
+  {
+    m_atmt_prevDist = dist;
+    m_wire.reset();
+    return *this;
+  }
 };
+// ----------------------------------------- END CUSTOMIZED PUBLIC METHODS BY JASON
 
 
 std::ostream&

@@ -26,5 +26,5 @@ After you put / override every files, run these:
 - [x] Broadcast strategy (May use Wifi module with limited range)
 - [x] Customize node behavior when receiving interest or data packet
 - [x] Visualization
-- [ ] Custom forwarding strategy
+- [x] Custom forwarding strategy (Can extend from ndn::Strategy, can also obtain node info)
 - [ ] Metrics extraction

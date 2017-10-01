@@ -263,8 +263,10 @@ Interest::wireEncode(EncodingImpl<TAG>& encoder) const
   // Name
   totalLength += getName().wireEncode(encoder);
 
-  // Added by Jason for encoding ATMT info
+  // ------ [ JASON ] for encoding ATMT info
   totalLength += prependStringBlock(encoder, lp::tlv::ATMTPacketData, m_atmt_uuid);
+  totalLength += prependNonNegativeIntegerBlock(encoder, lp::tlv::ATMTPacketPrevDist, m_atmt_prevDist);
+  // ------ END [ JASON ] for encoding ATMT info
 
   totalLength += encoder.prependVarNumber(totalLength);
   totalLength += encoder.prependVarNumber(tlv::Interest);
@@ -345,7 +347,7 @@ Interest::wireDecode(const Block& wire)
     m_link = Block();
   }
 
-  // Added by Jason for ATMT
+  // -------------------------- [JASON] ATMT data decoding
   val = m_wire.find(lp::tlv::ATMTPacketData);
   if (val != m_wire.elements_end()) {
     m_atmt_uuid = readString(*val);
@@ -353,6 +355,14 @@ Interest::wireDecode(const Block& wire)
   else {
     m_atmt_uuid = "invalid";
   }
+  val = m_wire.find(lp::tlv::ATMTPacketPrevDist);
+  if (val != m_wire.elements_end()) {
+    m_atmt_prevDist = readNonNegativeInteger(*val);
+  }
+  else {
+    m_atmt_prevDist = 0;
+  }
+  // -------------------------- END [JASON] ATMT data decoding
 
   // SelectedDelegation
   val = m_wire.find(tlv::SelectedDelegation);

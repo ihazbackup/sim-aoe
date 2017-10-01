@@ -23,17 +23,7 @@ public:
 	
 		return v;
 	}
-	/*
-	static string make_bounds(double x, double y, double radius) {
-		double xMin = x - radius / 2;
-		double xMax = x + radius / 2;
-		double yMin = y - radius / 2;
-		double yMax = y + radius / 2;
-
-  		std::stringstream ss;
-		ss << xMin << "|" << xMax << "|" << yMin << "|" << yMax;
-		return ss.str();
-	}*/
+	
 };
 
 }

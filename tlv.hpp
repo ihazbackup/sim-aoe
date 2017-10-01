@@ -36,8 +36,11 @@ enum {
   FragIndex = 82,
   FragCount = 83,
   HopCountTag = 84,
+  //---------------- [JASON] TLV Block Id for ATMT Data
   ATMTPacketTag = 85,
-  ATMTPacketData = 86, // Added by Jason: ATMT Packet data
+  ATMTPacketData = 86,
+  ATMTPacketPrevDist = 87,
+  //---------------- END [JASON] TLV Block Id for ATMT Data
   Nack = 800,
   NackReason = 801,
   NextHopFaceId = 816,

@@ -114,10 +114,11 @@ MyProducer::OnInterest(shared_ptr<const Interest> interest)
   std::cout << "ATMT UUID = " << interest->get_atmt_uuid() << std::endl;
 
   // check mobility (BIG THX TO https://groups.google.com/forum/#!topic/ns-3-users/ftQqy23ug_E)
+  /*
   Ptr<RandomWalk2dMobilityModel> model = GetNode()->GetObject<RandomWalk2dMobilityModel>();
   Vector pos = model->GetPosition();
   std::cout << "current pos upon receiving interest: " << pos << std::endl;
-
+  */
   // Getting extra tag
   /*
   auto tag = interest-> template getTag<lp::ATMTPacketTag>();

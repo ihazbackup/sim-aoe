@@ -37,6 +37,7 @@
 #include <boost/ref.hpp>
 
 #include <ndn-cxx/lp/tags.hpp>
+#include "forward-geocast-strategy.hpp"
 // #include "ns3/ndnSIM/ndn-cxx/lp/atmt.hpp"
 
 NS_LOG_COMPONENT_DEFINE("MyConsumer");
@@ -200,6 +201,14 @@ MyConsumer::SendInterest()
   interest->set_atmt_uuid("12345");
   time::milliseconds interestLifeTime(m_interestLifeTime.GetMilliSeconds());
   interest->setInterestLifetime(interestLifeTime);
+
+  // Set previous distance
+  Ptr<MobilityModel> model = GetNode()->GetObject<MobilityModel>();
+  Vector pos = model->GetPosition();
+  double distToAoi = nfd::fw::GetDistance(pos.x, pos.y, 50.0, 30.0);
+  interest->set_atmt_prevDist(static_cast<uint32_t>(distToAoi));
+  
+  std::cout << "[ MyConsumer ] distance to AoI = " << distToAoi << std::endl;
 
   // Create a new ATMT Packet
   /*
