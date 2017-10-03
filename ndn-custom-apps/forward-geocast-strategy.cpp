@@ -12,6 +12,8 @@
 
 #include "ns3/node-list.h"
 
+#include "helper.hpp"
+
 NFD_LOG_INIT("ForwardGeocastStrategy");
 
 namespace nfd {
@@ -70,47 +72,71 @@ ForwardGeocastStrategy::afterReceiveInterest(const Face& inFace, const Interest&
   auto node = ns3::NodeList::GetNode(ns3::Simulator::GetContext());
   uint32_t nodeId = node->GetId();
   auto mobilityModel = node->GetObject<ns3::MobilityModel>();
+  ns3::Vector pos = mobilityModel->GetPosition();
   if (mobilityModel == nullptr)
   {
-    std::cout << "[Node "<< nodeId <<"] No mobility model!, the node does not know its current position";
+    std::cout << "[Forwarder "<< nodeId <<"] No mobility model!, the node does not know its current position";
+    this->rejectPendingInterest(pitEntry);
+    return;
+  }
+
+  // Get parsed interest name
+  std::vector<std::string> parts = std::Helper::split(interest.getName().toUri(), '/');
+
+  bool shouldForward = true;
+  shared_ptr<Interest> outInterest = nullptr;
+
+  if(IsInsideAoI(pos.x, pos.y, std::stod(parts[1]), std::stod(parts[2]), std::stod(parts[3])))
+  {
+    std::cout << "[Forwarder "<< nodeId <<"] is inside AoI" << std::endl;
+    shouldForward = true;
   } 
   else {
-    ns3::Vector pos = mobilityModel->GetPosition();
-    std::cout << "[Node "<< nodeId <<"] current pos upon receiving interest: " << pos << std::endl;
-  }
+    std::cout << "[Forwarder "<< nodeId <<"] is outside AoI" << std::endl;
+    // check distance
+    uint32_t thisDist = GetDistance(pos.x, pos.y, std::stod(parts[1]), std::stod(parts[2]));
+    shouldForward = thisDist <= interest.get_atmt_prevDist();
 
-  // Get interest field
-  std::cout << "[Node "<< nodeId <<"] interest name: " << interest.getName() << std::endl;
-  std::cout << "[Node "<< nodeId <<"] prevDist on interest: " << interest.get_atmt_prevDist() << std::endl;
-  
-  // TODO check whether this node is inside AoI
-  // TODO check whether this node is closer to AoI if above req is not met
+    std::cout << "- this node's distance to AOI = " << thisDist << std::endl;
+    std::cout << "- prevDist to AOI = " << interest.get_atmt_prevDist() << std::endl;
 
-  for (fib::NextHopList::const_iterator it = nexthops.begin(); it != nexthops.end(); ++it) {
-    Face& outFace = it->getFace();
-    if (!wouldViolateScope(inFace, interest, outFace) &&
-        canForwardToLegacy(*pitEntry, outFace)) {
-      this->sendInterest(pitEntry, outFace, interest);
-      return;
+    if (shouldForward)
+    {
+      // Update if closer
+      outInterest = make_shared<ndn::Interest>(interest);
+      outInterest->set_atmt_prevDist(static_cast<uint32_t>(thisDist));
     }
   }
 
-  this->rejectPendingInterest(pitEntry);
-  /*
-  fib::NextHopList::const_iterator selected;
-  do {
-    boost::random::uniform_int_distribution<> dist(0, nexthops.size() - 1);
-    const size_t randomIndex = dist(m_randomGenerator);
+  if (shouldForward)
+  {
+    std::cout << "[Forwarder "<< nodeId <<"] forwarding..." << std::endl;
+    
+    std::cout << "[Forwarder "<< nodeId <<"] forwarding..." << std::endl;
+    for (fib::NextHopList::const_iterator it = nexthops.begin(); it != nexthops.end(); ++it) {
+      Face& outFace = it->getFace();
+      // if (!wouldViolateScope(inFace, interest, outFace) &&
+      //  canForwardToLegacy(*pitEntry, outFace)) {
+      
+      if (outInterest != nullptr) 
+      {
+        std::cout << "[Forwarder "<< nodeId <<"] begin forwarding updated..." << std::endl;
+        this->sendInterest(pitEntry, outFace, *outInterest);
+      }
+      else {
+        this->sendInterest(pitEntry, outFace, interest);
+      }
 
-    uint64_t currentIndex = 0;
-
-    for (selected = nexthops.begin(); selected != nexthops.end() && currentIndex != randomIndex;
-         ++selected, ++currentIndex) {
+        // return;
+      // }
     }
-  } while (!canForwardToNextHop(inFace, pitEntry, *selected));
-  */
+    
+  } 
+  else {
+    std::cout << "[Forwarder "<< nodeId <<"] dropping..." << std::endl;
+    this->rejectPendingInterest(pitEntry);
+  }
 
-  // this->sendInterest(pitEntry, inFace, interest);
 }
 
 } // namespace fw

@@ -169,31 +169,17 @@ MyConsumer::SendInterest()
 {
   NS_LOG_FUNCTION_NOARGS();
 
-  /*
-  uint32_t seq = std::numeric_limits<uint32_t>::max(); // invalid
+  // X,Y location
+  auto aoiX = 60;
+  auto aoiY = 20;
+  auto aoiRadius = 5;
 
-  while (m_retxSeqs.size()) {
-    seq = *m_retxSeqs.begin();
-    m_retxSeqs.erase(m_retxSeqs.begin());
-    break;
-  }
-
-  if (seq == std::numeric_limits<uint32_t>::max()) {
-    if (m_seqMax != std::numeric_limits<uint32_t>::max()) {
-      if (m_seq >= m_seqMax) {
-        return; // we are totally done
-      }
-    }
-
-    seq = m_seq++;
-  }
-  */
-
-  // setup a location where do u want the producers to process the Interest
+  // setup the name to include AOI target
   std::stringstream ss;
-  ss << m_interestName.toUri() << "/50/30/10";
+  ss << m_interestName.toUri() << "/" << aoiX << "/" << aoiY << "/" << aoiRadius;
   Name reqWithLoc = Name(ss.str());
 
+  // Construct Interest packet
   shared_ptr<Name> nameWithSequence = make_shared<Name>(reqWithLoc);
   shared_ptr<Interest> interest = make_shared<Interest>();
   interest->setNonce(m_rand->GetValue(0, std::numeric_limits<uint32_t>::max()));
@@ -202,26 +188,19 @@ MyConsumer::SendInterest()
   time::milliseconds interestLifeTime(m_interestLifeTime.GetMilliSeconds());
   interest->setInterestLifetime(interestLifeTime);
 
-  // Set previous distance
+  // Set previous distance on Interest packet
   Ptr<MobilityModel> model = GetNode()->GetObject<MobilityModel>();
   Vector pos = model->GetPosition();
-  double distToAoi = nfd::fw::GetDistance(pos.x, pos.y, 50.0, 30.0);
+  double distToAoi = nfd::fw::GetDistance(pos.x, pos.y, aoiX, aoiY);
   interest->set_atmt_prevDist(static_cast<uint32_t>(distToAoi));
   
   std::cout << "[ MyConsumer ] distance to AoI = " << distToAoi << std::endl;
-
-  // Create a new ATMT Packet
-  /*
-  lp::ATMTPacket packet;
-  interest->setTag(make_shared<lp::ATMTPacketTag>(packet));
-  */
-
   std::cout << "[ MyConsumer ] sending interest " << *interest << std::endl;
 
   m_transmittedInterests(interest, this, m_face);
   m_appLink->onReceiveInterest(*interest);
 
-  // Simulator::Schedule(Seconds(1.0), &MyConsumer::SendInterest, this);
+  Simulator::Schedule(Seconds(1.0), &MyConsumer::SendInterest, this);
 }
 
 ///////////////////////////////////////////////////

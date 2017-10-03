@@ -21,16 +21,6 @@ class Coord {
     }
 };
 
-static void 
-CourseChange (std::string foo, Ptr<const MobilityModel> mobility)
-{
-  Vector pos = mobility->GetPosition ();
-  Vector vel = mobility->GetVelocity ();
-  std::cout << foo << ": model=" << mobility << ", POS: x=" << pos.x << ", y=" << pos.y
-            << ", z=" << pos.z << "; VEL:" << vel.x << ", y=" << vel.y
-            << ", z=" << vel.z << std::endl;
-}
-
 int
 main(int argc, char* argv[])
 {
@@ -56,14 +46,15 @@ main(int argc, char* argv[])
 
   // Creating nodes
   NodeContainer nodes;
-  nodes.Create(2);
+  nodes.Create(5);
 
   // Coordinates
-  Coord coordinates[4] = {
-    Coord("0"   , "0"), // Consumer
-    Coord("30"  , "0"),
-    Coord("60"  , "0"),
-    Coord("50"  , "30"), // Producer
+  Coord coordinates[5] = {
+    Coord("30"  , "30"), // Consumer, the rest is producer
+    Coord("50"  , "30"),
+    Coord("60"  , "20"),
+    Coord("30"  , "40"),
+    Coord("20"  , "60")
   };
 
   // WIFI
@@ -76,7 +67,7 @@ main(int argc, char* argv[])
   wifiChannel.SetPropagationDelay("ns3::ConstantSpeedPropagationDelayModel");
   // Can use this to model signal range
   wifiChannel.AddPropagationLoss("ns3::RangePropagationLossModel",
-      "MaxRange", DoubleValue(45.0));
+      "MaxRange", DoubleValue(30.0));
   // wifiChannel.AddPropagationLoss("ns3::NakagamiPropagationLossModel");
   YansWifiPhyHelper wifiPhyHelper = YansWifiPhyHelper::Default();
   wifiPhyHelper.SetChannel(wifiChannel.Create());
@@ -87,6 +78,12 @@ main(int argc, char* argv[])
 
   NetDeviceContainer wifiNetDevices = wifi.Install(wifiPhyHelper, wifiMacHelper, nodes);
   
+  ndn::AppHelper consumerApp("MyConsumer");
+  consumerApp.SetPrefix("/prefix");
+  
+  ndn::AppHelper prodApp("MyProducer");
+  prodApp.SetPrefix("/prefix");
+  prodApp.SetAttribute("PayloadSize", StringValue("1024"));
   // CSMA
   /*
   CsmaHelper csma;
@@ -97,113 +94,34 @@ main(int argc, char* argv[])
   ndnHelper.SetDefaultRoutes(true);
   ndnHelper.InstallAll();
 
-  // Mobility model
-  /*
-  MobilityHelper mobility;
-  mobility.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
-   "X", StringValue ("50.0"),
-   "Y", StringValue ("50.0"),
-   "Rho", StringValue ("ns3::UniformRandomVariable[Min=0|Max=30]"));
-  mobility.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
-    "Mode", StringValue("Time"),
-    "Time", StringValue("2s"),
-    "Speed", StringValue("ns3::ConstantRandomVariable[Constant=3.0]"),
-    "Bounds", StringValue("0|125|0|125"));
-    */
+  for (int i = 0 ; i < 5 ; i++) {
+    MobilityHelper mob;
+    mob.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
+      "X", StringValue (coordinates[i].x),
+      "Y", StringValue (coordinates[i].y),
+      "Rho", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"));
+    mob.SetMobilityModel("ns3::ConstantPositionMobilityModel");
 
-  MobilityHelper mob;
-  mob.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
-   "X", StringValue ("20.0"),
-   "Y", StringValue ("20.0"),
-   "Rho", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"));
-  mob.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-  mob.Install(nodes.Get(0));
-  ndn::AppHelper consumerApp("MyConsumer");
-  consumerApp.SetPrefix("/prefix");
-  consumerApp.Install(nodes.Get(0));
+    if (i == 0) {
+      // Consumer
+      consumerApp.Install(nodes.Get(i));
+    } else {
+      // Producers
+      /*
+      mob.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
+        "Mode", StringValue("Time"),
+        "Time", StringValue("2s"),
+        "Speed", StringValue("ns3::ConstantRandomVariable[Constant=1.0]"),
+        "Bounds", StringValue("0|150|0|150"));
+        */
+      prodApp.Install(nodes.Get(i));
+    }
 
-  //  MobilityHelper mob;
-  
-  mob.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
-   "X", StringValue ("35.0"),
-   "Y", StringValue ("35.0"),
-   "Rho", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"));
-  mob.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
-    "Mode", StringValue("Time"),
-    "Time", StringValue("2s"),
-    "Speed", StringValue("ns3::ConstantRandomVariable[Constant=1.0]"),
-    "Bounds", StringValue("0|125|0|125"));
-  mob.Install(nodes.Get(1));
-  ndn::AppHelper prodApp("MyProducer");
-  prodApp.SetPrefix("/prefix");
-  prodApp.SetAttribute("PayloadSize", StringValue("1024"));
-  prodApp.Install(nodes.Get(1));
+    mob.Install(nodes.Get(i));
+  }
 
   ndn::StrategyChoiceHelper::Install<nfd::fw::ForwardGeocastStrategy>(nodes, "/prefix");
-
-  
-  // Config::Connect ("/NodeList/*/$ns3::MobilityModel/CourseChange",
-  //                 MakeCallback (&CourseChange));
-  
-
-  // The static model
-  // MobilityHelper staticMob;
-  /*
-  staticMob.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
-   "X", StringValue ("35.0"),
-   "Y", StringValue ("35.0"),
-   "Rho", StringValue ("ns3::UniformRandomVariable[Min=0|Max=30]"));
-  staticMob.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-  */
-  /*
-  for (int i = 0 ; i < 4 ; i++) {
-     
-    MobilityHelper staticMob;
-    staticMob.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
-     "X", StringValue (coordinates[i].x),
-     "Y", StringValue (coordinates[i].y),
-     "Rho", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"));
-    staticMob.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-    
-    if (i == 0) {
-      ndn::AppHelper consumerApp("MyConsumer");
-      consumerApp.SetPrefix("/prefix");
-      consumerApp.Install(nodes.Get(i));
-    } else if (i == 3) {
-      ndn::AppHelper producerApp("MyProducer");
-      producerApp.SetPrefix("/prefix");
-      producerApp.SetAttribute("PayloadSize",   StringValue("1024"));
-      // producerApp.SetAttribute("MobilityModel", PointerValue(staticMob));
-      producerApp.Install(nodes.Get(i));
-    } else {
-      staticMob.Install(nodes.Get(i));
-    }
-  }
-  */
-  // consumerApp.Install(nodes.Get(0));
-  /*
-  for (int i = 0 ; i < 9 ; i++) {
-    mobility.Install(nodes.Get(i));
-  }
-  */
-  /*
-  MobilityHelper mobility;
-  mobility.SetPositionAllocator ("ns3::RandomDiscPositionAllocator",
-   "X", StringValue ("10.0"),
-   "Y", StringValue ("30.0"),
-   "Rho", StringValue ("ns3::UniformRandomVariable[Min=0|Max=0]"));
-  mobility.SetMobilityModel("ns3::RandomWalk2dMobilityModel",
-    "Mode", StringValue("Time"),
-    "Time", StringValue("2s"),
-    "Speed", StringValue("ns3::ConstantRandomVariable[Constant=3.0]"),
-    "Bounds", StringValue("0|50|0|50"));
-  producerApp.Install(nodes.Get(3));
-  mobility.Install(nodes.Get(3));
-  */
-  // staticMob.Install(nodes.Get(9));
-
-  // Strategy for given prefix
-  // ndn::StrategyChoiceHelper::InstallAll("/prefix", "/localhost/nfd/strategy/multicast");
+  ndn::L3RateTracer::InstallAll("jason-rate-trace.txt", Seconds(1.0));
 
   Simulator::Stop(Seconds(20.0));
 

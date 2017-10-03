@@ -1,3 +1,6 @@
+#ifndef HELPER_HPP_
+#define HELPER_HPP_
+
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -27,3 +30,5 @@ public:
 };
 
 }
+
+#endif // HELPER_HPP_

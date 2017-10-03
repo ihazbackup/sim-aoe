@@ -51,6 +51,7 @@ private:
   uint32_t m_signature;
   Name m_keyLocator;
 
+  Ptr<UniformRandomVariable> m_rand; ///< @brief nonce generator
   // Mobility model settings
   // Ptr<MobilityHelper> m_mobility;
 };

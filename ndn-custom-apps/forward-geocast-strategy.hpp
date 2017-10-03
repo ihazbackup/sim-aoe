@@ -15,6 +15,13 @@ GetDistance(double x1, double y1, double x2, double y2)
   return sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1));
 }
 
+static bool
+IsInsideAoI(double posX, double posY, double aoiX, double aoiY, double radius)
+{
+  return posX <= aoiX + radius && posX >= aoiX - radius && 
+  			posY <= aoiY + radius && posY >= aoiY - radius;
+}
+
 class ForwardGeocastStrategy : public Strategy {
 public:
   ForwardGeocastStrategy(Forwarder& forwarder, const Name& name = STRATEGY_NAME);

@@ -14,7 +14,8 @@
 
 #include <memory>
 
-#include "helper.cpp"
+#include "helper.hpp"
+#include "forward-geocast-strategy.hpp"
 #include <ndn-cxx/lp/tags.hpp>
 
 NS_LOG_COMPONENT_DEFINE("MyProducer");
@@ -52,16 +53,12 @@ MyProducer::GetTypeId(void)
       .AddAttribute("KeyLocator",
                     "Name to be used for key locator.  If root, then key locator is not used",
                     NameValue(), MakeNameAccessor(&MyProducer::m_keyLocator), MakeNameChecker());
-      /*
-      .AddAttribute("MobilityHelper",
-                    "Reference to mobility model",
-                    PointerValue(), MakePointerAccessor(&MyProducer::m_mobility), 
-                    MakePointerChecker<MobilityHelper>());*/
   
   return tid;
 }
 
-MyProducer::MyProducer()
+MyProducer::MyProducer() 
+  : m_rand(CreateObject<UniformRandomVariable>())
 {
   NS_LOG_FUNCTION_NOARGS();
 
@@ -75,10 +72,6 @@ MyProducer::StartApplication()
   App::StartApplication();
 
   FibHelper::AddRoute(GetNode(), m_prefix, m_face, 0);
-
-
-  std::cout << "Producer started!!" << std::endl;
-  
 }
 
 void
@@ -92,52 +85,57 @@ MyProducer::StopApplication()
 void
 MyProducer::OnInterest(shared_ptr<const Interest> interest)
 {
-  std::cout << "[ MyProducer ] receiving interest " << *interest << std::endl;
+  
   App::OnInterest(interest); // tracing inside
 
   NS_LOG_FUNCTION(this << interest);
 
-  // std::cout << "[ MyProducer ] receiving interest " << *interest << std::endl;
+  auto id = GetNode()->GetId();
+  std::cout << "[ Node "<< id << " ] receiving interest " << *interest << std::endl;
+  std::cout << "[ Node "<< id << " ] prevDist interest = " << interest->get_atmt_prevDist() 
+            << std::endl;
 
   Name dataName(interest->getName());
   // dataName.append(m_postfix);
   // dataName.appendVersion();
 
-  std::cout << "parsing name ...." << std::endl;
   std::vector<std::string> parts = std::Helper::split(dataName.toUri(), '/');
-  std::cout << "idx-0 = " << parts[0] << std::endl;
-  std::cout << "idx-1 (xpos) = " << parts[1] << std::endl;
-  std::cout << "idx-2 (ypos) = " << parts[2] << std::endl;
-  std::cout << "idx-3 (radius) = " << parts[3] << std::endl;
-
-  // ATMT Packet
-  std::cout << "ATMT UUID = " << interest->get_atmt_uuid() << std::endl;
 
   // check mobility (BIG THX TO https://groups.google.com/forum/#!topic/ns-3-users/ftQqy23ug_E)
-  /*
-  Ptr<RandomWalk2dMobilityModel> model = GetNode()->GetObject<RandomWalk2dMobilityModel>();
+  Ptr<MobilityModel> model = GetNode()->GetObject<MobilityModel>();
   Vector pos = model->GetPosition();
-  std::cout << "current pos upon receiving interest: " << pos << std::endl;
-  */
-  // Getting extra tag
-  /*
-  auto tag = interest-> template getTag<lp::ATMTPacketTag>();
-  if (tag == nullptr)
-  {
-    std::cout << "[ MyProducer ] No ATMT Packet found" << std::endl;
+  std::cout << "[ Node "<< id << " ] location at " << pos << std::endl;
+
+  // Process if inside AoI
+  bool shouldProcessInterest = 
+      nfd::fw::IsInsideAoI(pos.x, pos.y, std::stod(parts[1]), std::stod(parts[2]), std::stod(parts[3]));
+
+  if (shouldProcessInterest) {
+    std::cout << "[ Node "<< id << " ] is inside AoI.."<< std::endl;
+    auto data = make_shared<Data>();
+    data->setName(dataName);
+    data->setFreshnessPeriod(::ndn::time::milliseconds(m_freshness.GetMilliSeconds()));
+    data->setContent(make_shared< ::ndn::Buffer>(m_virtualPayloadSize));
+    StackHelper::getKeyChain().sign(*data);
+
+    m_transmittedDatas(data, this, m_face);
+    m_appLink->onReceiveData(*data);
   } 
-  else 
-  {
-    std::cout << "[ MyProducer ] ATMT UUID: " <<  tag->get().getData() << std::endl;
+  else {
+    std::cout << "[ Node "<< id << " ] is outside AoI.. forwarding.."<< std::endl;
+    // forward it
+    shared_ptr<Interest> fInterest = make_shared<Interest>(interest->getName());
+    fInterest->set_atmt_uuid(interest->get_atmt_uuid());
+    fInterest->setNonce(interest->getNonce());
+    fInterest->set_atmt_prevDist(interest->get_atmt_prevDist());
+    fInterest->setInterestLifetime(interest->getInterestLifetime());
+
+    std::cout << "[ Node "<< id << " ] forwarding with prevDist: "<< *fInterest << std::endl;
+
+    m_transmittedInterests(fInterest, this, m_face);
+    m_appLink->onReceiveInterest(*fInterest);
+    
   }
-  */
-
-  auto data = make_shared<Data>();
-  data->setName(dataName);
-  data->setFreshnessPeriod(::ndn::time::milliseconds(m_freshness.GetMilliSeconds()));
-  data->setContent(make_shared< ::ndn::Buffer>(m_virtualPayloadSize));
-  StackHelper::getKeyChain().sign(*data);
-
 /*
   Signature signature;
   SignatureInfo signatureInfo(static_cast< ::ndn::tlv::SignatureTypeValue>(255));
@@ -158,8 +156,6 @@ MyProducer::OnInterest(shared_ptr<const Interest> interest)
   std::cout << "[ MyProducer ] sending data " << *data << std::endl;
 
   */
-  m_transmittedDatas(data, this, m_face);
-  m_appLink->onReceiveData(*data);
 }
 
 } // namespace ndn
